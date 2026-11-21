@@ -1,0 +1,7 @@
+TEAM_ID=
+
+PRODUCT_NAME=Dictionary_KMP_CMP_App
+PRODUCT_BUNDLE_IDENTIFIER=com.example.dictionary_kmp_cmp_app.Dictionary_KMP_CMP_App$(TEAM_ID)
+
+CURRENT_PROJECT_VERSION=1
+MARKETING_VERSION=1.0

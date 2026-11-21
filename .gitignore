@@ -1,0 +1,38 @@
+# Gradle & Kotlin build files
+.gradle/
+.kotlin/
+build/
+**/build/
+
+# IDE & Editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Local configuration
+local.properties
+
+# Android build outputs & caches
+*.apk
+*.aab
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+
+# macOS / OS files
+.DS_Store
+Thumbs.db
+
+# Xcode / iOS files
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.pbxuser
+*.moved-aside
