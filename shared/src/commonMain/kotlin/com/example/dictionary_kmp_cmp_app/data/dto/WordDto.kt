@@ -1,6 +1,7 @@
 package com.example.dictionary_kmp_cmp_app.data.dto
 
 
+import com.example.dictionary_kmp_cmp_app.data.database.WordEntity
 import com.example.dictionary_kmp_cmp_app.domain.models.Word
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -20,4 +21,8 @@ fun WordDto.toWord(): Word {
             it.toMeaning()
         }
     )
+}
+
+fun WordDto.toWordEntity(): WordEntity {
+    return WordEntity(word = word)
 }

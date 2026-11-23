@@ -1,5 +1,6 @@
 package com.example.dictionary_kmp_cmp_app.data.ktor
 
+import com.example.dictionary_kmp_cmp_app.di.databaseModule
 import com.example.dictionary_kmp_cmp_app.di.sharedModule
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -15,7 +16,7 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
     if (KoinPlatform.getKoinOrNull() == null) {
         startKoin {
             appDeclaration()
-            modules(sharedModule)
+            modules(sharedModule, databaseModule)
         }
     }
 }

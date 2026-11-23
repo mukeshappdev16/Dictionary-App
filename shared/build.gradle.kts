@@ -6,6 +6,12 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias { libs.plugins.room }
+    alias(libs.plugins.ksp)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -65,6 +71,10 @@ kotlin {
             api(libs.koin.compose)
             api(libs.koin.compose.viewmodel)
             implementation(libs.kermit)
+
+            // Room & SQLite
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -79,6 +89,9 @@ kotlin {
             implementation(libs.androidx.testRunner)
         }
     }
+}
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
 }
 
 dependencies {

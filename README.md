@@ -7,6 +7,7 @@ A modern cross-platform Dictionary application built with **Kotlin Multiplatform
 ## 🚀 Features
 
 - 🔍 **Real-Time Word Search**: Instant dictionary lookup using the Free Dictionary API.
+- 💾 **Local Database Caching**: Offline persistence and caching using **Room KMP** with SQLite.
 - ⚡ **Debounced Search Input**: Optimized search requests using Kotlin Coroutines Flow (`debounce(500ms)`).
 - 🎨 **Shared Compose Multiplatform UI**: Single codebase powering the UI across Android, Desktop, and iOS.
 - 🧩 **Clean Architecture & DI**: Modular presentation, domain, and data layers wired together with **Koin**.
@@ -20,6 +21,8 @@ A modern cross-platform Dictionary application built with **Kotlin Multiplatform
 - **UI Framework**: Compose Multiplatform `1.12.2` (Declarative UI for Android, iOS & Desktop)
 - **Architecture**: Clean Architecture (Presentation, Domain, Data)
 - **Dependency Injection**: Koin `4.2.2` (Pragmatic lightweight DI framework for KMP)
+- **Database & Persistence**: Room KMP `2.7.0` & SQLite Bundled Driver (`androidx.sqlite.bundled`)
+- **Annotation Processing**: KSP (Kotlin Symbol Processing for Room code generation across Android, JVM, iOS)
 - **Networking**: Ktor Client `3.6.1` (Asynchronous multiplatform HTTP client)
 - **HTTP Engines**: OkHttp (Android/JVM), Darwin (iOS)
 - **Serialization**: `kotlinx.serialization` `1.12.0` (Multiplatform JSON parsing)
@@ -43,11 +46,12 @@ Dictionary_KMP_CMP_App/
         ├── commonMain/
         │   └── kotlin/com/example/dictionary_kmp_cmp_app/
         │       ├── App.kt      # Main Compose entry composable
-        │       ├── data/       # Data Layer: Repositories, DTOs, Ktor Client configuration
+        │       ├── data/       # Data Layer: Database (Room), Repositories, DTOs, Ktor Client
+        │       │   ├── database/# Room Database, WordDao, WordEntity
         │       │   ├── dto/
         │       │   ├── ktor/
         │       │   └── repository/
-        │       ├── di/         # Dependency Injection (Koin shared modules)
+        │       ├── di/         # Dependency Injection (Koin shared & database modules)
         │       ├── domain/     # Domain Layer: Use cases, Interfaces, Models
         │       │   ├── models/
         │       │   ├── repository/
@@ -55,9 +59,9 @@ Dictionary_KMP_CMP_App/
         │       └── presentation/# Presentation Layer: ViewModels, Composables, Screen state
         │           ├── common/
         │           └── screens/
-        ├── androidMain/        # Android-specific implementations (e.g. OkHttp, PlatformText)
-        ├── jvmMain/            # Desktop JVM-specific implementations (e.g. OkHttp)
-        └── iosMain/            # iOS-specific implementations (e.g. Darwin engine, MainViewController)
+        ├── androidMain/        # Android-specific implementations (e.g. Android Room Database Builder, OkHttp)
+        ├── jvmMain/            # Desktop JVM-specific implementations (e.g. Desktop Room Database Builder)
+        └── iosMain/            # iOS-specific implementations (e.g. iOS Room Database Builder, Darwin engine)
 ```
 
 ### Layer Responsibilities
@@ -70,25 +74,56 @@ Dictionary_KMP_CMP_App/
    - `Dictionary`: Domain repository contract.
    - `GetWordInfoUseCase`: Encapsulates business logic for retrieving word information.
 3. **Data Layer**:
-   - `DictionaryRepositoryImpl`: Implements `Dictionary` interface, executes network calls using Ktor `HttpClient`, maps DTOs to domain models.
+   - `DictionaryRepositoryImpl`: Implements `Dictionary` interface, executes network calls using Ktor `HttpClient`, saves entities locally via `WordDao`, and maps DTOs to domain models.
+   - `WordDatabase` & `WordDao`: Room database configuration for offline word storage.
    - `createHttpClient()`: Configures Ktor with JSON serialization and logging plugins.
+
+---
+
+## 💾 Local Storage & Database (Room KMP)
+
+The app uses **Room Multiplatform** with SQLite Bundled Driver for local caching:
+
+- **Database Definition**: Defined in `commonMain` via `WordDatabase` with `@ConstructedBy(AppDatabaseConstructor::class)`.
+- **Platform Builders**: `expect val databaseModule: Module` provides platform-specific `RoomDatabase.Builder<WordDatabase>` instances:
+  - **Android**: Resolves path using `Context.getDatabasePath()`.
+  - **iOS**: Resolves path via `NSFileManager` document directory and instantiates with `factory = { AppDatabaseConstructor.initialize() }`.
+  - **Desktop (JVM)**: Resolves user home directory path (`~/.my_app/app_database.db`) with `factory = { AppDatabaseConstructor.initialize() }`.
+- **KSP Multiplatform Setup**: Configured in `shared/build.gradle.kts` for `kspAndroid`, `kspIosArm64`, `kspIosSimulatorArm64`, and `kspJvm` targets.
+- **DAO Stream Handling**: Functions returning `Flow<T>` (e.g., `fun getAllWords(): Flow<List<WordEntity>>`) are non-suspend reactive streams, while write operations (e.g., `suspend fun addWord(...)`) use `suspend`.
 
 ---
 
 ## 🔧 Dependency Injection (Koin)
 
-Dependencies are wired in `KoinModules.kt` via `sharedModule`:
+Dependencies are wired in `KoinModules.kt` via `sharedModule` and platform-specific `databaseModule`:
 
 ```kotlin
+expect val databaseModule: Module
+
 val sharedModule = module {
     single<HttpClient> { createHttpClient() }
-    single { DictionaryRepositoryImpl(get()) }.bind<Dictionary>()
+    single { DictionaryRepositoryImpl(get(), get()) }.bind<Dictionary>()
     single { GetWordInfoUseCase(get()) }
     viewModel { WordInfoScreenViewModel(get()) }
+
+    single<WordDatabase> { getRoomDatabase(get()) }
+    single<WordDao> { get<WordDatabase>().getWordDao() }
 }
 ```
 
-Koin is initialized on app startup across all platforms via `initKoin()`.
+Koin is initialized on app startup across all platforms via `initKoin()`:
+
+```kotlin
+fun initKoin(appDeclaration: KoinAppDeclaration = {}) {
+    if (KoinPlatform.getKoinOrNull() == null) {
+        startKoin {
+            appDeclaration()
+            modules(sharedModule, databaseModule)
+        }
+    }
+}
+```
 
 ---
 
